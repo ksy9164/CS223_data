@@ -9,6 +9,10 @@ num_elements = 1000000  # Number of elements you want to read
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOST, PORT))
 
+message = '3'
+s.sendall(message.encode('utf-8'))
+data = s.recv(1024)
+
 message = 'D000000000000000000000000000000000000000000000000D000000000000000000000000000000000000000000000000'
 s.sendall(message.encode('utf-8'))
 data = s.recv(1024)

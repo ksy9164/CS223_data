@@ -67,14 +67,19 @@ while True:
     while True:
         data = conn.recv(1024)
         message = data.decode('utf-8')
+        trans_order = list(message)
+        table_id = check_transaction(trans_order[0])
+        message = data.decode('utf-8')
         print(message)
         trans_order = list(message)
         table_id = check_transaction(trans_order[0])
             
-        r_idx = trans_order[1:17]
-        w_idx = trans_order[17:33]
-        w_val = trans_order[33:49]
-        r_data = table[int(r_idx)]
+        r_idx = ''.join(trans_order[1:17])
+        w_idx = ''.join(trans_order[17:33])
+        w_val = ''.join(trans_order[33:49])
+        r_data = table[table_id][int(r_idx) % 65536]
+        if w_idx != 0:
+            table[table_id][int(w_idx)] = int(w_val)
 
         conn.sendall(data)
 

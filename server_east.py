@@ -3,7 +3,7 @@ from queue import Queue
 rows = 4
 cols = 65536
 
-table = [[0 for _ in range(cols)] for _ in range(rows)]
+table = [[1 for _ in range(cols)] for _ in range(rows)]
 
 table_name = ["User Table", "Product Table", "Order Table", "Review Table"]
 
@@ -61,19 +61,26 @@ ss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ss.connect(('localhost', CENTER_PORT))
 ss.settimeout(1) 
 
+cnt = 0
 while True:
     # Accept a connection
     conn, addr = s.accept()
     print("Connected by {addr}")
 
+    data = conn.recv(1024)
+    message = data.decode('utf-8')
+    t_num = int(message)
+    print("Total" , t_num, "new request has been recieved")
+    conn.sendall(data)
 
     # Read and echo back data from the client
-    while True:
+    while cnt < t_num:
         data = conn.recv(1024)
         message = data.decode('utf-8')
         print(message)
         trans_order = list(message)
         table_id = check_transaction(trans_order[0])
+        print("Transaction processing start ", cnt , " " , trans_order[0]);
 
         try:
             data_from_center = ss.recv(1024)
@@ -81,32 +88,40 @@ while True:
             bitmap = list(m_center)
             if data:
                 sch_val = sch_val & bitmap
-            time_cur = time_cut + 40
+            print("Got response for transaction ", m_center[0])
+            time_cur = time_cur + 40
         except :
             print("con")
-            
+
+        r_idx = 0 
+        w_idx = 0 
+        w_val = 0 
+        r_data = 0
+
         if (int(sch_val) & int(table_id)) == 0:
             r_idx = ''.join(trans_order[1:17])
             w_idx = ''.join(trans_order[17:33])
             w_val = ''.join(trans_order[33:49])
-            r_data = table[int(r_idx) % 65536]
+            r_data = table[table_id][int(r_idx) % 65536]
             if w_idx != 0:
-                table[int(w_idx) + 1] = w_val
+                table[table_id][int(w_idx)] = int(w_val)
         else :
             waitQ.put(message)
 
         if check_multi(trans_order[0]):
             sch_val = sch_val | calculate_binary_value(trans_order[0])
-            msg = ''.join(trans_order[49:1024]).join(r_data)
-            ss.sendall(msge.encode('utf-8'))
-
-            time_max = time_max + 40
+            msg = ''.join(trans_order[49:98])
+            msg = msg + str(r_data)
+            print("Request to Central Server fir remaining transaction")
+            ss.sendall(msg.encode('utf-8'))
+            time_max = time_max + 80
         else:
             if time_cur <= time_max:
-                time_cur = time_cur + 2
-                time_max = time_max + 2
+                time_cur = time_cur + 4
+                time_max = time_max + 4
 
         conn.sendall(data)
+        cnt = cnt + 1
         print("Total Elapsed TIme is ", time_max)
 
     # Close the connection
