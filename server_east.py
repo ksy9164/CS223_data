@@ -18,10 +18,6 @@ def calculate_binary_value(value):
 
     return total_value
 
-result = calculate_binary_value("ABCG")
-print(result)  # This will output 97 for "ABCG" (64 + 32 + 1 + 1)
-
-
 def check_transaction(trans_char):
     if trans_char == 'A':
         return 0
@@ -89,7 +85,7 @@ while True:
             if data:
                 sch_val = sch_val & bitmap
             print("Got response for transaction ", m_center[0])
-            time_cur = time_cur + 40
+            time_cur = time_cur + 80
         except :
             print("con")
 
@@ -98,7 +94,7 @@ while True:
         w_val = 0 
         r_data = 0
 
-        if (int(sch_val) & int(table_id)) == 0:
+        if (int(sch_val) & int(table_id)) == 0 and table_id != 1:
             r_idx = ''.join(trans_order[1:17])
             w_idx = ''.join(trans_order[17:33])
             w_val = ''.join(trans_order[33:49])
@@ -108,7 +104,7 @@ while True:
         else :
             waitQ.put(message)
 
-        if check_multi(trans_order[0]):
+        if check_multi(trans_order[0]) or (table_id == 1):
             sch_val = sch_val | calculate_binary_value(trans_order[0])
             msg = ''.join(trans_order[49:98])
             msg = msg + str(r_data)
@@ -116,9 +112,12 @@ while True:
             ss.sendall(msg.encode('utf-8'))
             time_max = time_max + 80
         else:
-            if time_cur <= time_max:
+            if time_cur + 4 <= time_max:
+                time_cur = time_cur + 4
+            else :
                 time_cur = time_cur + 4
                 time_max = time_max + 4
+
 
         conn.sendall(data)
         cnt = cnt + 1
