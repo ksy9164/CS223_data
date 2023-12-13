@@ -71,6 +71,43 @@ while True:
 
     # Read and echo back data from the client
     while cnt < t_num:
+        try:
+            data_from_center = ss.recv(1024)
+            m_center = data_from_center.decode('utf-8')
+            print("Got response for transaction ", m_center[0])
+            bitmap = list(m_center)
+            if data:
+                sch_val = sch_val & bitmap
+            # check queue
+            if bitmap == waitQ[0]:
+                msg_t = waitQ.get()
+                trans_order_t = list(message)
+                table_id_t = check_transaction(trans_order_t[0])
+                print("Transaction processing start ", trans_order_t[0]);
+                r_idx_t = ''.join(trans_order_t[1:17])
+                w_idx_t = ''.join(trans_order_t[17:33])
+                w_val_t = ''.join(trans_order_t[33:49])
+                r_data_t = table[table_id_t][int(r_idx_t)]
+                if w_idx_t != 0:
+                    table[table_id_t][int(w_idx_t)] = int(w_val_t)
+            if check_multi(trans_order_t[0]) or (table_id_t == 1):
+                sch_val = sch_val | calculate_binary_value(trans_order_t[0])
+                msg = ''.join(trans_order_t[49:98])
+                msg = msg + str(r_data_t)
+                print("Request to Central Server for remaining transaction")
+                ss.sendall(msg.encode('utf-8'))
+                time_max = time_max + 80
+            else:
+                if time_cur + 4 <= time_max:
+                    time_cur = time_cur + 4
+                else :
+                    time_cur = time_cur + 4
+                    time_max = time_max + 4
+
+            time_cur = time_cur + 80
+        except :
+            print("")
+
         data = conn.recv(1024)
         message = data.decode('utf-8')
         print(message)
@@ -78,39 +115,38 @@ while True:
         table_id = check_transaction(trans_order[0])
         print("Transaction processing start ", cnt , " " , trans_order[0]);
 
-        try:
-            data_from_center = ss.recv(1024)
-            m_center = data_from_center.decode('utf-8')
-            bitmap = list(m_center)
-            if data:
-                sch_val = sch_val & bitmap
-            print("Got response for transaction ", m_center[0])
-            time_cur = time_cur + 80
-        except :
-            print("con")
-
         r_idx = 0 
         w_idx = 0 
         w_val = 0 
         r_data = 0
 
-        if (int(sch_val) & int(table_id)) == 0 and table_id != 1:
-            r_idx = ''.join(trans_order[1:17])
-            w_idx = ''.join(trans_order[17:33])
-            w_val = ''.join(trans_order[33:49])
-            r_data = table[table_id][int(r_idx) % 65536]
-            if w_idx != 0:
-                table[table_id][int(w_idx)] = int(w_val)
+        if (int(sch_val) & int(table_id)) == 0:
+            if table_id != 1:
+                r_idx = ''.join(trans_order[1:17])
+                w_idx = ''.join(trans_order[17:33])
+                w_val = ''.join(trans_order[33:49])
+                r_data = table[table_id][int(r_idx) % 65536]
+                if w_idx != 0:
+                    table[table_id][int(w_idx)] = int(w_val)
         else :
             waitQ.put(message)
+            continue
 
         if check_multi(trans_order[0]) or (table_id == 1):
-            sch_val = sch_val | calculate_binary_value(trans_order[0])
-            msg = ''.join(trans_order[49:98])
-            msg = msg + str(r_data)
-            print("Request to Central Server fir remaining transaction")
-            ss.sendall(msg.encode('utf-8'))
-            time_max = time_max + 80
+            if check_multi(trans_order[0]):
+                sch_val = sch_val | calculate_binary_value(trans_order[0])
+                msg = ''.join(trans_order[49:98])
+                msg = msg + str(r_data)
+                print("Request to Central Server for remaining transaction")
+                ss.sendall(msg.encode('utf-8'))
+                time_max = time_max + 80
+            else:
+                msg = ''.join(trans_order[0:49])
+                msg = msg + str(r_data)
+                print("Request to Central Server for remaining transaction")
+                ss.sendall(msg.encode('utf-8'))
+                time_max = time_max + 80
+
         else:
             if time_cur + 4 <= time_max:
                 time_cur = time_cur + 4

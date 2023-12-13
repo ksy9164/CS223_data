@@ -80,7 +80,6 @@ while True:
         r_data = table[table_id][int(r_idx) % 65536]
         if w_idx != 0:
             table[table_id][int(w_idx)] = int(w_val)
-
         conn.sendall(data)
 
     # Close the connection
